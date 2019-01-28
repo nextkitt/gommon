@@ -149,6 +149,10 @@ func (l *Logger) Printj(j JSON) {
 	l.log(0, "json", j)
 }
 
+func (l *Logger) Println(i ...interface{}) {
+	l.Print(i...)
+}
+
 func (l *Logger) Debug(i ...interface{}) {
 	l.log(DEBUG, "", i...)
 }
@@ -159,6 +163,9 @@ func (l *Logger) Debugf(format string, args ...interface{}) {
 
 func (l *Logger) Debugj(j JSON) {
 	l.log(DEBUG, "json", j)
+}
+func (l *Logger) Debugln(i ...interface{}) {
+	l.Debug(i...)
 }
 
 func (l *Logger) Info(i ...interface{}) {
@@ -171,6 +178,9 @@ func (l *Logger) Infof(format string, args ...interface{}) {
 
 func (l *Logger) Infoj(j JSON) {
 	l.log(INFO, "json", j)
+}
+func (l *Logger) Infoln(i ...interface{}) {
+	l.Info(i...)
 }
 
 func (l *Logger) Warn(i ...interface{}) {
@@ -185,6 +195,10 @@ func (l *Logger) Warnj(j JSON) {
 	l.log(WARN, "json", j)
 }
 
+func (l *Logger) Warnln(i ...interface{}) {
+	l.Warn(i...)
+}
+
 func (l *Logger) Error(i ...interface{}) {
 	l.log(ERROR, "", i...)
 }
@@ -195,6 +209,10 @@ func (l *Logger) Errorf(format string, args ...interface{}) {
 
 func (l *Logger) Errorj(j JSON) {
 	l.log(ERROR, "json", j)
+}
+
+func (l *Logger) Errorln(i ...interface{}) {
+	l.Error(i...)
 }
 
 func (l *Logger) Fatal(i ...interface{}) {
@@ -212,6 +230,10 @@ func (l *Logger) Fatalj(j JSON) {
 	os.Exit(1)
 }
 
+func (l *Logger) Fatalln(i ...interface{}) {
+	l.Fatal(i...)
+}
+
 func (l *Logger) Panic(i ...interface{}) {
 	l.log(panicLevel, "", i...)
 	panic(fmt.Sprint(i...))
@@ -225,6 +247,9 @@ func (l *Logger) Panicf(format string, args ...interface{}) {
 func (l *Logger) Panicj(j JSON) {
 	l.log(panicLevel, "json", j)
 	panic(j)
+}
+func (l *Logger) Panicln(i ...interface{}) {
+	l.Panic(i...)
 }
 
 func DisableColor() {
@@ -275,6 +300,10 @@ func Printj(j JSON) {
 	global.Printj(j)
 }
 
+func Println(i ...interface{}) {
+	global.Println(i...)
+}
+
 func Debug(i ...interface{}) {
 	global.Debug(i...)
 }
@@ -285,6 +314,10 @@ func Debugf(format string, args ...interface{}) {
 
 func Debugj(j JSON) {
 	global.Debugj(j)
+}
+
+func Debugln(i ...interface{}) {
+	global.Debugln(i...)
 }
 
 func Info(i ...interface{}) {
@@ -299,6 +332,10 @@ func Infoj(j JSON) {
 	global.Infoj(j)
 }
 
+func Infoln(i ...interface{}) {
+	global.Infoln(i...)
+}
+
 func Warn(i ...interface{}) {
 	global.Warn(i...)
 }
@@ -309,6 +346,10 @@ func Warnf(format string, args ...interface{}) {
 
 func Warnj(j JSON) {
 	global.Warnj(j)
+}
+
+func Warnln(i ...interface{}) {
+	global.Warnln(i...)
 }
 
 func Error(i ...interface{}) {
@@ -323,6 +364,10 @@ func Errorj(j JSON) {
 	global.Errorj(j)
 }
 
+func Errorln(i ...interface{}) {
+	global.Errorln(i...)
+}
+
 func Fatal(i ...interface{}) {
 	global.Fatal(i...)
 }
@@ -333,6 +378,10 @@ func Fatalf(format string, args ...interface{}) {
 
 func Fatalj(j JSON) {
 	global.Fatalj(j)
+}
+
+func Fatalln(i ...interface{}) {
+	global.Fatalln(i...)
 }
 
 func Panic(i ...interface{}) {
@@ -347,7 +396,14 @@ func Panicj(j JSON) {
 	global.Panicj(j)
 }
 
+func Panicln(i ...interface{}) {
+	global.Panicln(i...)
+}
+
 func (l *Logger) log(v Lvl, format string, args ...interface{}) {
+	if !(v >= l.level || v == 0) {
+		return
+	}
 	l.mutex.Lock()
 	defer l.mutex.Unlock()
 	buf := l.bufferPool.Get().(*bytes.Buffer)
@@ -355,61 +411,59 @@ func (l *Logger) log(v Lvl, format string, args ...interface{}) {
 	defer l.bufferPool.Put(buf)
 	_, file, line, _ := runtime.Caller(l.skip)
 
-	if v >= l.level || v == 0 {
-		message := ""
-		if format == "" {
-			message = fmt.Sprint(args...)
-		} else if format == "json" {
-			b, err := json.Marshal(args[0])
-			if err != nil {
-				panic(err)
-			}
-			message = string(b)
-		} else {
-			message = fmt.Sprintf(format, args...)
+	message := ""
+	if format == "" {
+		message = fmt.Sprint(args...)
+	} else if format == "json" {
+		b, err := json.Marshal(args[0])
+		if err != nil {
+			panic(err)
 		}
+		message = string(b)
+	} else {
+		message = fmt.Sprintf(format, args...)
+	}
 
-		_, err := l.template.ExecuteFunc(buf, func(w io.Writer, tag string) (int, error) {
-			switch tag {
-			case "time_rfc3339":
-				return w.Write([]byte(time.Now().Format(time.RFC3339)))
-			case "time_rfc3339_nano":
-				return w.Write([]byte(time.Now().Format(time.RFC3339Nano)))
-			case "level":
-				return w.Write([]byte(l.levels[v]))
-			case "prefix":
-				return w.Write([]byte(l.prefix))
-			case "long_file":
-				return w.Write([]byte(file))
-			case "short_file":
-				return w.Write([]byte(path.Base(file)))
-			case "line":
-				return w.Write([]byte(strconv.Itoa(line)))
-			}
-			return 0, nil
-		})
+	_, err := l.template.ExecuteFunc(buf, func(w io.Writer, tag string) (int, error) {
+		switch tag {
+		case "time_rfc3339":
+			return w.Write([]byte(time.Now().Format(time.RFC3339)))
+		case "time_rfc3339_nano":
+			return w.Write([]byte(time.Now().Format(time.RFC3339Nano)))
+		case "level":
+			return w.Write([]byte(l.levels[v]))
+		case "prefix":
+			return w.Write([]byte(l.prefix))
+		case "long_file":
+			return w.Write([]byte(file))
+		case "short_file":
+			return w.Write([]byte(path.Base(file)))
+		case "line":
+			return w.Write([]byte(strconv.Itoa(line)))
+		}
+		return 0, nil
+	})
 
-		if err == nil {
-			s := buf.String()
-			i := buf.Len() - 1
-			if s[i] == '}' {
-				// JSON header
-				buf.Truncate(i)
-				buf.WriteByte(',')
-				if format == "json" {
-					buf.WriteString(message[1:])
-				} else {
-					buf.WriteString(`"message":`)
-					buf.WriteString(strconv.Quote(message))
-					buf.WriteString(`}`)
-				}
+	if err == nil {
+		s := buf.String()
+		i := buf.Len() - 1
+		if s[i] == '}' {
+			// JSON header
+			buf.Truncate(i)
+			buf.WriteByte(',')
+			if format == "json" {
+				buf.WriteString(message[1:])
 			} else {
-				// Text header
-				buf.WriteByte(' ')
-				buf.WriteString(message)
+				buf.WriteString(`"message":`)
+				buf.WriteString(strconv.Quote(message))
+				buf.WriteString(`}`)
 			}
-			buf.WriteByte('\n')
-			l.output.Write(buf.Bytes())
+		} else {
+			// Text header
+			buf.WriteByte(' ')
+			buf.WriteString(message)
 		}
+		buf.WriteByte('\n')
+		l.output.Write(buf.Bytes())
 	}
 }

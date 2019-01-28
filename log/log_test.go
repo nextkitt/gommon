@@ -18,14 +18,23 @@ func test(l *Logger, t *testing.T) {
 
 	l.Print("print")
 	l.Printf("print%s", "f")
+	l.Println("println")
+
 	l.Debug("debug")
 	l.Debugf("debug%s", "f")
+	l.Debugln("debug")
+
 	l.Info("info")
 	l.Infof("info%s", "f")
+	l.Infoln("infoln")
+
 	l.Warn("warn")
 	l.Warnf("warn%s", "f")
+	l.Warnln("warnln")
+
 	l.Error("error")
 	l.Errorf("error%s", "f")
+	l.Errorln("errorln")
 
 	assert.Contains(t, b.String(), "print")
 	assert.Contains(t, b.String(), "printf")
@@ -69,10 +78,14 @@ func TestFatal(t *testing.T) {
 	case "fatalf":
 		l.Fatalf("fatal-%s", "f")
 		return
+	case "fatalln":
+		l.Fatalln("fatalln")
+		return
 	}
 
 	loggerFatalTest(t, "fatal", "fatal")
 	loggerFatalTest(t, "fatalf", "fatal-f")
+	loggerFatalTest(t, "fatalln", "fatalln")
 }
 
 func loggerFatalTest(t *testing.T, env string, contains string) {
