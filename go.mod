@@ -1,4 +1,4 @@
-module github.com/labstack/gommon
+module github.com/nextkitt/gommon
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
